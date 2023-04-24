@@ -37,15 +37,33 @@ public:
         return c * c / g;
     }
 
+
 //****************
 // новый  при изменении скорости в перицентре на dv
     double new_e(double dv){
         return (v_p() + dv) * (v_p() + dv) * m_orb.getP() / (1 + m_orb.e) / g - 1;
     }
+
+    double get_v(double phi){
+        return sqrt(get_h() + 2. * g / m_orb.getR(phi)) ;
+    }
+
+
+    double manevr(orbit A){
+        sputnik B(A, g);
+
+        std::vector<double> Z = null_f(m_orb, A);
+        double ugol = exact_null_f(m_orb, A, Z[1], Z[2], 1e-8);
+        
+        double b = cos_beta(m_orb, A, ugol);
+        double v0 = get_v(ugol);
+        double v = B.get_v(ugol);
+
+        return sqrt(v*v + v0*v0 - 2*v*v0*b);
+    
+    }
+
 };
-
-
-
 
 
 #endif 

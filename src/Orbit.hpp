@@ -24,6 +24,10 @@ struct orbit{
         return a * (1 + e);        
     }
 
+    double getR(const double phi){
+        return getP() / (1 + e * cos(phi));
+    }
+
     // получение фокального па
     double getP() const{
         return a * (1 - e * e);
@@ -45,7 +49,7 @@ const int N = 1e5;
 // значение разности двух орбит в плоскости при угле фи (D - целевая орбита)
 // если отрицательное, то значение целевой орбиты в данном угле ближе к планете
 double delta_f(orbit D0, orbit D, double phi){
-    return D0.getP() / (1 + D0.e * cos(phi)) - D.getP() / (1 + D.e * cos(phi + D0.omega - D.omega));
+    return D0.getR(phi) - D.getR(phi + D0.omega - D.omega);
 } 
 
 // делит угол на .. частей и определяет части, на которых функция меняет знак 
@@ -140,20 +144,51 @@ double exact_null_df(const orbit D0, const orbit D, double a1, double a2, double
     return l;
 }
 
+// функция вычисляет косинус угла между орбитами, которые пересекаются под углом phi(от планеты)
+double cos_beta(orbit D0, orbit D, double phi){
+
+    double Rphi = D0.getR(phi); // расстояние до точки пересечения
+    double alpha = 0.0001; // угол отступа от пересечения
+    double R0 = D0.getR(phi + alpha);  // расстояние до данной отбиты отклоненной от пересеч на alpha
+    double R = D.getR(phi + D0.omega - D.omega + alpha); // аналогично, но только для целевой отбиты
+    alpha = (1. - alpha * alpha / 2 + alpha*alpha*alpha*alpha / 24); // разложение косинуса в нуле
+
+    double d0 = (R0 * R0 + Rphi * Rphi - 2 * R0 * Rphi * alpha); // растояние на начальной орбите 
+    double d =(R * R + Rphi * Rphi - 2 * R * Rphi * alpha); // аналогично но для целевой
+    
+    return (R * R0 + Rphi * Rphi - Rphi * (R0 + R) * alpha ) / sqrt(d * d0); //возвращаю косинус)
+
+    // для улучшения малых улов есть одна идейка
+    
+}
+
 
 // выдаёт нормированный вектор линии пересечения двух плоскостей(эллипс задаёт плоскость)
 std::array<double, 3> peresech(const orbit A, const orbit B){
-    std::array<double, 3> An = A.getPlane();
-    std::array<double, 3> Bn = B.getPlane();
-    std::array<double, 3> X;
-    X[0] = An[1]*Bn[2] - An[2]*Bn[1];
-    X[1] = - An[0]*Bn[2] + An[2]*Bn[0];
-    X[2] = An[0]*Bn[1] - An[1]*Bn[0];
+    std::array<double, 3> An = A.getPlane(); // коэффициенты 1 плоскости
+    std::array<double, 3> Bn = B.getPlane(); // коэффициенты 2 плоскости
+    std::array<double, 3> X; // сюда я буду складывать направляющие векторы пересечения
+    X[0] = An[1]*Bn[2] - An[2]*Bn[1];   // 
+    X[1] = - An[0]*Bn[2] + An[2]*Bn[0]; //здесь появеляется векторное произведение 
+    X[2] = An[0]*Bn[1] - An[1]*Bn[0];   //
     double r = sqrt(X[0] * X[0] +  X[1] * X[1] + X[2] * X[2]);
+    if(r <= 1e-15)
+        return X;
     for(int i = 0; i < 3; ++i)
         X[i] /= r;
     return X;
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 

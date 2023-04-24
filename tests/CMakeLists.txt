@@ -10,7 +10,8 @@ target_link_libraries(GTest::GTest INTERFACE gtest_main)
 
 add_executable(
         TESTs
-        tests.cpp)
+        tests.cpp
+        )
 
 
 target_link_libraries(
