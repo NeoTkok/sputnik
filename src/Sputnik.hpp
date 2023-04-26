@@ -44,26 +44,76 @@ public:
         return (v_p() + dv) * (v_p() + dv) * m_orb.getP() / (1 + m_orb.e) / g - 1;
     }
 
+// получение скорости при заданном угле
     double get_v(double phi){
         return sqrt(get_h() + 2. * g / m_orb.getR(phi)) ;
+
+// получение характерной скорости при заданном угле(в котором происходит пересечение орбит)
+    }
+    double delta_V(orbit A, double phi){
+        sputnik B(A,g);
+        double b = cos_beta(m_orb, A, phi); // угол межнду начальной скоростью и целевой
+        double v0 = get_v(phi); // как раз таки начальная скорость
+        double v = B.get_v(phi); // скорость, которую будет иметь КА на целевой орбите
+
+        return sqrt(v*v + v0*v0 - 2*v*v0*b); // т. Косинусов
+    }
+//****** 
+// получение скоростей при ОЧЕНЬ малых углах(где касательные)
+    double delta_Vr(orbit A, double phi){
+        sputnik B(A,g);
+        double v0 = get_v(phi); 
+        double v = B.get_v(phi); 
+        return v - v0;
     }
 
 
-    double manevr(orbit A){
-        sputnik B(A, g);
+//
+    double manevr(orbit A, double eps){ 
+        sputnik B(A, g); 
+        std::array<double,3> a = peresech(m_orb, A); // направляющий вектор пересечения орбит
 
-        std::vector<double> Z = null_f(m_orb, A);
-        double ugol = exact_null_f(m_orb, A, Z[1], Z[2], 1e-8);
+        if(a[0] == 0 && a[1] == 0 && a[2] == 0) // т.е. лежит в плоскости
+        {
+            std::cout<< "плоскость целевого эллипса совпала с настоящей" << std::endl;
+
+            std::vector<double> x = intersection(m_orb, A, eps); // экстремальные точке
+            std::vector<double> V; // вектор скоростей
+            std::vector<double> PHI; // вектор углов из которых мы видим точку пересечения
+            std::vector<double> UGOL; // угол между скоростями(начальной и целевой)
+
+            if (x.size() == 1){ // если экстремальные точки 
+                V.push_back(delta_Vr(A, x[0]));
+                PHI.push_back(x[0]);
+                UGOL.push_back(0);
+            }
+            if (x.size() == 2){  // добавление двух элементов
+                V.push_back(delta_V(A, x[0]));
+                PHI.push_back(x[0]);
+                UGOL.push_back(cos_beta(m_orb, A, x[0]));
+                V.push_back(delta_V(A, x[1]));
+                PHI.push_back(x[1]);
+                UGOL.push_back(cos_beta(m_orb, A, x[1]));
+            }
+
+            if (x.size() == 0){
+            }
+
+
+        for (int i = 0; i < V.size(); ++i)
+            std::cout << UGOL[i] << " - " << V[i] << " - " << PHI[i] << std::endl;
+    // таким образом мы получили 3 вектора из которых можно найти оптимальную скорость
+    // если эти векторы пустые, то пересечений вообще нет => изменять скорость в перицентре
+        }
+
         
-        double b = cos_beta(m_orb, A, ugol);
-        double v0 = get_v(ugol);
-        double v = B.get_v(ugol);
-
-        return sqrt(v*v + v0*v0 - 2*v*v0*b);
-    
+        return -1;
     }
 
 };
+
+
+
 
 
 #endif 
