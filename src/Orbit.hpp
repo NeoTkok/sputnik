@@ -4,33 +4,28 @@
 #include<cmath>
 
 struct orbit{
-    double a; // большая полуось
+    double p; // большая полуось
     double e; // эксцентриситет
     const double OMEGA; //долгота восходящего узла
     const double omega; // аргумент перигея
     const double i; // наклонение
 
     //инициализация структуры
-    orbit(const double a, const double e, const double OMEGA, const double omega,
-          const double i) : a(a), e(e), OMEGA(OMEGA), omega(omega), i(i) {};
+    orbit(const double p, const double e, const double OMEGA, const double omega,
+          const double i) : p(p), e(e), OMEGA(OMEGA), omega(omega), i(i) {};
 
     // получение радиуса перицентра
     double getRp() const{
-        return a * (1 - e);
+        return p / (1 + e);
     }
     
     // получение радиуса апоцентра
     double getRa() const{
-        return a * (1 + e);        
+        return p / (1 - e);        
     }
 
     double getR(const double phi){
-        return getP() / (1 + e * cos(phi));
-    }
-
-    // получение фокального па
-    double getP() const{
-        return a * (1 - e * e);
+        return p / (1 + e * cos(phi));
     }
 
     // получение нормированных коэффициентов в уравнеии плоскоти Ax+By+Cz=0
@@ -53,7 +48,7 @@ const int N = 20;
 double delta_df(orbit D0, orbit D, double phi){
     double y2 = 1 + D.e * cos(phi + D0.omega - D.omega);
     double y1 = 1 + D0.e * cos(phi);
-    return D0.e * D0.getP() * sin(phi) / (y1*y1) - D.e * D.getP() * sin(phi + D0.omega - D.omega) / (y2 * y2);
+    return D0.e * D0.p * sin(phi) / (y1 * y1) - D.e * D.p * sin(phi + D0.omega - D.omega) / (y2 * y2);
 }
 
 
@@ -81,7 +76,7 @@ std::vector<double> null_df(orbit D0, orbit D){
 double exact_null_df(const orbit D0, const orbit D, double a1, double a2, double eps){
     double l = (a1 + a2) / 2;
     double Z = delta_df(D0, D, l);
-    while(Z * Z > eps * eps){
+    while(abs(Z) > eps){
         if (Z * delta_df(D0, D, a1) > 0)
             a1 = l;
         else
