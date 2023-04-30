@@ -270,7 +270,7 @@ TEST(Sputnik, v_2) {
     ASSERT_NEAR(3074.66628, S.get_v(M_PI) ,1e-5);
 }
 
-
+/*
 // тестирование маневра в некой точке пересечения
 
 TEST(Sputnik, DELTA_V) {
@@ -293,6 +293,62 @@ TEST(Sputnik, DELTA_VVVV) {
     sputnik S(A, GM);
     double x = S.manevr(B,1e-8);
 
+}
+*/
+
+TEST(Sputnik, kasanie_1) {
+    orbit A(20'000'000. * 3./4., 1./2., 0., 0., 0.);
+
+    orbit B(30'000'000. * 3./4., 1./2., 0., 0, 0.);
+
+    sputnik S(B, GM);
+    //ASSERT_NEAR(S.v_min_p(A,1e-7), -130.9655, 1e-4);
+
+}
+
+TEST(Sputnik, kasanie_2_tochn) {
+    orbit A(10'000'000. * 3./4., 1./2., 0., 0., 0.);
+
+    orbit B(30'000'000. * 3./4., 1./2., 0., 0, 0.);
+
+    sputnik S(B, GM);
+
+    ASSERT_NEAR((S.v_min_p(A,1e-7)).SPEED, -1158.5454, 1e-4);
+}
+
+TEST(Sputnik, kasanie_3) {
+    orbit A(10'010'000. * 3./4., 1./2., 0., 0., 0.);
+    orbit B(30'000'000. * 3./4., 1./2., 0., 0, 0.);
+
+    sputnik S(B, GM);
+    ASSERT_NEAR((S.v_min_p(A,1e-7)).SPEED, -1157.2548, 1e-4);
+}
+
+
+TEST(Sputnik, kasanie_4) {
+    orbit A(9'900'000. * 3./4., 1./2., 0., 0., 0.);
+    orbit B(30'000'000. * 3./4., 1./2., 0., 0, 0.);
+    
+    sputnik S(B, GM);
+    ASSERT_NEAR((S.v_min_p(A,1e-7)).SPEED, -1171.5043, 1e-4);
+}
+
+
+TEST(Sputnik, kasanie_5) {
+    orbit A(26'000'000. * 3./4., 1./2., 0., 0., 0.);
+    orbit B(100'000'000. * 3./4., 1./2., 0., 0., 0.);
+
+    sputnik S(A, GM);
+    
+    ASSERT_NEAR((S.v_min_p(B,1e-6)).SPEED, 730.35, 1e-2);
+}
+
+TEST(Sputnik, kasanie_6) {
+    orbit A(20'000'000. * 3./4., 1./2., 0., 0., 0.);
+    orbit B(60'000'000. * 3./4., 1./2., 0., -M_PI/2., 0.);
+
+    sputnik S(A, GM);
+    std::cout<< (S.manevr(B,1e-5)) << std::endl;
 }
 
 
