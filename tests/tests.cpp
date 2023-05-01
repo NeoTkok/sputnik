@@ -48,7 +48,7 @@ TEST(Orbit, peresech_1){
     orbit B(1., 1/sqrt(2), M_PI/4 , 0., 3 * M_PI / 4);
     std::array<double, 3> r = {1/sqrt(2), 1/sqrt(2), 0};
     for(int i = 0; i < 3; ++i)
-        ASSERT_NEAR(r[i], peresech(A, B)[i] ,1e-15);
+        ASSERT_NEAR(r[i], peresech(A, B, 1e-8)[i] ,1e-15);
 }
 
 TEST(Orbit, peresech_2){
@@ -56,7 +56,7 @@ TEST(Orbit, peresech_2){
     orbit B(1., 1/sqrt(2), M_PI/2 , 0., 3 * M_PI / 4);
     std::array<double, 3> r = {1/sqrt(3), 1/sqrt(3), 1/sqrt(3)};
     for(int i = 0; i < 3; ++i)
-        ASSERT_NEAR(r[i], peresech(A, B)[i] ,1e-15);
+        ASSERT_NEAR(r[i], peresech(A, B, 1e-8)[i] ,1e-15);
 }
 
 // наложение двух плоскостей))
@@ -65,7 +65,7 @@ TEST(Orbit, peresech_3){
     orbit B(1., 1/sqrt(2), M_PI/2 , 0., M_PI);
     std::array<double, 3> r = {0., 0., 0.};
     for(int i = 0; i < 3; ++i)
-        ASSERT_NEAR(r[i], peresech(A, B)[i] ,1e-13);
+        ASSERT_NEAR(r[i], peresech(A, B, 1e-8)[i] ,1e-13);
 }
 
 // *********** тестирование функции разности значений при заданном угле в Rp и Ra ********** 
@@ -207,7 +207,7 @@ TEST(Orbit, extr_2) {
 }
 
 
-
+// проверка точного касания
 TEST(Orbit, touch_1) {
     orbit A(10., 1./2., 0., 0., 0.);
     orbit B(10., 1./2., 0., - M_PI / 2., 0.);
@@ -227,7 +227,7 @@ TEST(Orbit, touch_2) {
     std::vector<double> Z = extr(A, B, 1e-14); // получение extr
 
     ASSERT_NEAR(touch(A,B, Z[0], 1e-9), 0 ,1e-4);
-    ASSERT_NEAR(touch(A,B, Z[0], 1e-3), 1 ,1e-4);
+    ASSERT_NEAR(touch(A,B, Z[0], 1e-8), 1 ,1e-4);
 
 }
 
@@ -270,42 +270,22 @@ TEST(Sputnik, v_2) {
     ASSERT_NEAR(3074.66628, S.get_v(M_PI) ,1e-5);
 }
 
-/*
-// тестирование маневра в некой точке пересечения
 
-TEST(Sputnik, DELTA_V) {
-    orbit A(10'000'000. * 3. / 4., 1./2., 0., 0., 0.);
-    orbit B(10'000'000. * 3. / 4., 1./2., 0., -M_PI / 2., 0.);
 
-    sputnik S(A, GM);
+// далее идет тестирование функции v_min_p для различных конфигурация
 
-    std::vector<double> Z = intersection(A,B,1e-8);// вектор пересечений
- 
-    ASSERT_NEAR(5154.9359445, S.delta_V(B, Z[0]), 1e-6);
-}
-
-TEST(Sputnik, DELTA_VVVV) {
-    orbit A(20'000'000. * 3./4., 1./2., 0., 0., 0.);
-    double c = 5'000'000.;
-    double a = c + 3'819'660.;
-    orbit B(a * (1 - c * c / a / a), c/a, 0., -M_PI / 2., 0.);
-
-    sputnik S(A, GM);
-    double x = S.manevr(B,1e-8);
-
-}
-*/
-
+// целевая внутри(но снаружи окружности, см описание функции)
 TEST(Sputnik, kasanie_1) {
     orbit A(20'000'000. * 3./4., 1./2., 0., 0., 0.);
 
     orbit B(30'000'000. * 3./4., 1./2., 0., 0, 0.);
 
     sputnik S(B, GM);
-    //ASSERT_NEAR(S.v_min_p(A,1e-7), -130.9655, 1e-4);
+    ASSERT_NEAR(S.v_min_p(A,1e-7).SPEED, -361.07397, 1e-4);
 
 }
 
+// точное касание с окружностью
 TEST(Sputnik, kasanie_2_tochn) {
     orbit A(10'000'000. * 3./4., 1./2., 0., 0., 0.);
 
@@ -316,39 +296,46 @@ TEST(Sputnik, kasanie_2_tochn) {
     ASSERT_NEAR((S.v_min_p(A,1e-7)).SPEED, -1158.5454, 1e-4);
 }
 
+// близ этой оркружности но только снаружи
 TEST(Sputnik, kasanie_3) {
     orbit A(10'010'000. * 3./4., 1./2., 0., 0., 0.);
     orbit B(30'000'000. * 3./4., 1./2., 0., 0, 0.);
 
     sputnik S(B, GM);
-    ASSERT_NEAR((S.v_min_p(A,1e-7)).SPEED, -1157.2548, 1e-4);
+
+    ASSERT_NEAR((S.v_min_p(A,1e-7)).SPEED, -1157.25739, 1e-4);
 }
 
-
+// близ этой окружности, но только внутри неё
+// важно заметить, что у новой орбиты S.v_min_p(A,1e-7)).ORB
+// перецинтр развернулся на 180 градусов
 TEST(Sputnik, kasanie_4) {
     orbit A(9'900'000. * 3./4., 1./2., 0., 0., 0.);
     orbit B(30'000'000. * 3./4., 1./2., 0., 0, 0.);
     
     sputnik S(B, GM);
-    ASSERT_NEAR((S.v_min_p(A,1e-7)).SPEED, -1171.5043, 1e-4);
+
+    ASSERT_NEAR((S.v_min_p(A,1e-7)).SPEED, -1171.51367, 1e-4);
 }
 
-
+// добавление скорости
 TEST(Sputnik, kasanie_5) {
     orbit A(26'000'000. * 3./4., 1./2., 0., 0., 0.);
-    orbit B(100'000'000. * 3./4., 1./2., 0., 0., 0.);
+    orbit B(110'000'000. * 3./4., 1./2., 0., 0., 0.);
 
     sputnik S(A, GM);
     
-    ASSERT_NEAR((S.v_min_p(B,1e-6)).SPEED, 730.35, 1e-2);
+    ASSERT_NEAR((S.v_min_p(B,1e-6)).SPEED, 757.7616, 1e-4);
 }
 
+// добавление совсем маленькой скорости
 TEST(Sputnik, kasanie_6) {
     orbit A(20'000'000. * 3./4., 1./2., 0., 0., 0.);
-    orbit B(60'000'000. * 3./4., 1./2., 0., -M_PI/2., 0.);
-
+    orbit B(20'100'000. * 3./4., 1./2., 0., 0., 0.);
+    
     sputnik S(A, GM);
-    std::cout<< (S.manevr(B,1e-5)) << std::endl;
+    std::cout << S.manevr(B,1e-6) << "\n";
+    //ASSERT_NEAR((S.v_min_p(B,1e-6)).SPEED, 4.81267, 1e-4);
 }
 
 

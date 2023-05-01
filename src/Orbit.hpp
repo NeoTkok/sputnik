@@ -26,7 +26,7 @@ struct orbit{
         return p / (1 - e);        
     }
 
-    double getR(const double phi){
+    double getR(const double phi) const{
         return p / (1 + e * cos(phi));
     }
 
@@ -44,28 +44,26 @@ const double N = 1000;
 
 
 
-/*********************************/
+// значение разности двух орбит в плоскости при угле фи (D - целевая орбита)
+// если отрицательное, то значение целевой орбиты в данном угле ближе к планете
+double delta_f(const orbit& D0, const orbit& D, const double phi){
+    return D0.getR(phi) - D.getR(phi + D0.omega - D.omega);
+} 
 
 // аналогично но только для произвдной
-double delta_df(orbit D0, orbit D, double phi){
+double delta_df(const orbit& D0, const orbit& D, const double phi){
     double y2 = 1 + D.e * cos(phi + D0.omega - D.omega);
     double y1 = 1 + D0.e * cos(phi);
     return D0.e * D0.p * sin(phi) / (y1 * y1) - D.e * D.p * sin(phi + D0.omega - D.omega) / (y2 * y2);
 }
 
-// значение разности двух орбит в плоскости при угле фи (D - целевая орбита)
-// если отрицательное, то значение целевой орбиты в данном угле ближе к планете
-double delta_f(orbit D0, orbit D, double phi){
-    return D0.getR(phi) - D.getR(phi + D0.omega - D.omega);
-} 
 
-
-
-//функция возвращающая отрезки угла, где производная функции  = 0
+// функция возвращающая отрезки угла, где производная функции меняет знак(т.е.  = 0)
 // в таком формате : (-1,х1,у1,-1,-1,х2,у2,-1)
-std::vector<double> null_df(orbit D0, orbit D){
+// таких отрезков не больше чем 4, но в основном только 2))
+std::vector<double> null_df(const orbit& D0, const orbit& D){
     std::vector<double> x;
-    double d = delta_df(D0,D,0.);
+    double d = delta_df(D0,D,0.); // получаем значение производной функции в перицентре
     
     for(double alpha = 2 * M_PI / N; alpha < 2 * M_PI; alpha += 2 * M_PI / N){
         double y = delta_df(D0,D, alpha);
@@ -83,7 +81,8 @@ std::vector<double> null_df(orbit D0, orbit D){
 } 
 
 // в данном отрезке находит точный нуль производной
-double exact_null_df(const orbit D0, const orbit D, double a1, double a2, double eps){
+// (метод половинного деления)
+double exact_null_df(const orbit& D0, const orbit& D, double a1, double a2, const double eps){
     double l = (a1 + a2) / 2;
     double Z = delta_df(D0, D, l);
     while(abs(Z) > eps){
@@ -98,7 +97,7 @@ double exact_null_df(const orbit D0, const orbit D, double a1, double a2, double
 }
 
 //фукция, выдающая вектор экстремальных точек с ошибкой eps 
-std::vector<double> extr(orbit D0, orbit D, double eps){
+std::vector<double> extr(const orbit& D0, const orbit& D, const double eps){
     std::vector<double> n_df = null_df(D0, D); // находим отрезки где производная меняет знак
     std::vector<double> ex_n_df;
     
@@ -112,20 +111,17 @@ std::vector<double> extr(orbit D0, orbit D, double eps){
         if(ex_n_df.size() > 4)
             return ex_n_df;
 
-    x[0] = ex_n_df[0];
-    x[1] = ex_n_df[2];
-        
+        x[0] = ex_n_df[0];
+        x[1] = ex_n_df[2];
         return x;
     }   
     return ex_n_df;
 
 }
 
-
-
 // находит нули между двумя углами с точностью eps(функция в которых имеет разные знаки) 
 // алгоритм основывается на методе половинного деления
-double exact_null_f(const orbit D0, const orbit D, double a1, double a2, double eps){
+double exact_null_f(const orbit& D0, const orbit& D, double a1, double a2, const double eps){
     double l = (a1 + a2) / 2;
     double Z = delta_f(D0, D, l);
     while(abs(Z) > eps){
@@ -140,19 +136,18 @@ double exact_null_f(const orbit D0, const orbit D, double a1, double a2, double 
 }
 
 
-// функция, проверяющая является ли касанием двух орбит
+// функция, проверяющая является ли касанием двух орбит в некотором phi
 // при условии, что phi - экстремум функции f
-bool touch(orbit D0, orbit D, double phi, double eps){
+bool touch(const orbit& D0, const orbit& D, const double phi, const double eps){
     if (abs(delta_f(D0,D,phi)) / D0.getR(phi) < eps) 
         return 1;
     return 0;
 }
 
-// выдаёт массив размера колличества пересечений (либо размер 0, 1 , 2, ...)
-// если пересечений больше 2(т е идет наложение) функция выдаёт 3 нуля
-std::vector<double> intersection(orbit D0, orbit D, double eps){
-    std::vector<double> ex_n_df = extr(D0, D, eps); // (размер 2 если не накладывается)
-
+// выдаёт массив размера колличества пересечений (размер 0, 1 или 2)
+// если пересечений больше 2 (т е идет наложение) функция выдаёт 3 нуля
+std::vector<double> intersection(const orbit& D0, const orbit& D, const double eps){
+    std::vector<double> ex_n_df = extr(D0, D, eps); 
     std::vector<double> ex_n_f; // точные точки пересечения или касания
 
     if(ex_n_df.size() > 2){
@@ -169,12 +164,12 @@ std::vector<double> intersection(orbit D0, orbit D, double eps){
         return ex_n_f;
     }
 
-    if (touch(D0,D,ex_n_df[0],eps*100) == 1){ // касание в 1 точке - только одна общая точка
+    if (touch(D0,D,ex_n_df[0],eps) == 1){ // касание в 1 точке - только одна общая точка
         ex_n_f.push_back(ex_n_df[0]);
         return ex_n_f;
     }
 
-    if (touch(D0,D,ex_n_df[1],eps*100) == 1){ // касание во второй точке - только одна общая точка 
+    if (touch(D0,D,ex_n_df[1],eps) == 1){ // касание во второй точке - только одна общая точка 
         ex_n_f.push_back(ex_n_df[1]);
         return ex_n_f;
     }
@@ -184,8 +179,13 @@ std::vector<double> intersection(orbit D0, orbit D, double eps){
     return ex_n_f;
 }
 
-// функция вычисляет косинус угла между орбитами, которые пересекаются под углом phi(от планеты)
-double cos_beta(orbit D0, orbit D, double phi){
+// функция вычисляет косинус угла между орбитами,
+// которые пересекаются под углом phi(от планеты)
+// данный алгоритм дает плохую точность при очень близких углах(касание)-
+// для решения этой проблемы косинус будет просто равен +-1
+// а для больших углов (близ 90 градусов) хорошоая точноть,но такую ситуации в реальном мире очень сложно повторить
+// тк под прямым углом никакие орбиты не пересекаются(у одной е->0 а у другой у->1 и еще пару условий)
+double cos_beta(const orbit& D0, const orbit& D, const double phi){
 
     double Rphi = D0.getR(phi); // расстояние до точки пересечения
     double alpha = 0.0001; // угол отступа от пересечения
@@ -203,7 +203,7 @@ double cos_beta(orbit D0, orbit D, double phi){
 }
 
 // выдаёт нормированный вектор линии пересечения двух плоскостей(эллипс задаёт плоскость)
-std::array<double, 3> peresech(const orbit A, const orbit B){
+std::array<double, 3> peresech(const orbit& A, const orbit& B, const double eps){
     std::array<double, 3> An = A.getPlane(); // коэффициенты 1 плоскости
     std::array<double, 3> Bn = B.getPlane(); // коэффициенты 2 плоскости
     std::array<double, 3> X; // сюда я буду складывать направляющие векторы пересечения
@@ -211,7 +211,7 @@ std::array<double, 3> peresech(const orbit A, const orbit B){
     X[1] = - An[0]*Bn[2] + An[2]*Bn[0]; //здесь появеляется векторное произведение 
     X[2] = An[0]*Bn[1] - An[1]*Bn[0];   //
     double r = sqrt(X[0] * X[0] +  X[1] * X[1] + X[2] * X[2]);
-    if(r <= 1e-15)
+    if(r < eps)
         {
             X[0] = 0.; X[1] = 0.; X[2] = 0.;
             return X;
@@ -220,6 +220,8 @@ std::array<double, 3> peresech(const orbit A, const orbit B){
         X[i] /= r;
     return X;
 }
+
+// наглядный вывод всех харрактеристик орбиты
 std::ostream& operator<<(std::ostream& os, const orbit& o) {
     os << "############################" << std::endl;
     os << "| Параметр орбиты          | " << o.p << std::endl;

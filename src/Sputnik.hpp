@@ -8,112 +8,125 @@ private:
     orbit m_orb;
     double g;
 public:
-    sputnik(const orbit A, const double G) : m_orb(A), g(G) {};
+    sputnik(const orbit& A, const double G) : m_orb(A), g(G) {};
 
-    double get_h(){
+// получение энергии системы
+    double get_h() const{
         return - g * (1-m_orb.e * m_orb.e) / m_orb.p;
     }
 
-// радиальная скорость
-    double v_r(double alpha){
+// радиальная скорость в зависимости от угла(от перицентра против ч.с.)
+    double v_r(const double alpha) const{
         return sqrt(g/m_orb.p) * m_orb.e * sin(alpha);
     }
 
-// трансверсальная скорость
-    double v_tau(double alpha){
+// трансверсальная скорость ....-//-
+    double v_tau(const double alpha) const{
         return sqrt(g / m_orb.p) * (1 + m_orb.e * cos(alpha));
     }
 
 //***********
-// скорость в перицентре
-    double v_p(){
+// скорость в перицентре(просто удобно отдельно так сделать)
+    double v_p() const{
         return (1 + m_orb.e) * sqrt(g / m_orb.p);
     }
 
 //***************
 // новый фокальный параметр при изменении скорости в перицентре на dv
-    double new_p_p(double dv){
+    double new_p_p(const double dv) const{
         double c = (v_p() + dv) * m_orb.p / (1. + m_orb.e);
         return c * c / g;
     }
 
 //****************
 // новый e при изменении скорости в перицентре на dv
-    double new_e_p(double dv){
+    double new_e_p(double dv) const{
         return (v_p() + dv) * (v_p() + dv) * m_orb.p / (1. + m_orb.e) / g - 1.;
     }
 
-// новый фокальный параметр при изменении скорости в перицентре на dv
-    double new_p_a(double dv){
+// новый фокальный параметр при изменении скорости в апоцентре на dv
+    double new_p_a(const double dv) const{
         double c = (v_p() + dv) * m_orb.p / (1. - m_orb.e);
         return c * c / g;
     }
 //****************
-// новый e при изменении скорости в перицентре на dv
-    double new_e_a(double dv){
+// новый e при изменении скорости в апоцентре на dv
+    double new_e_a(const double dv) const{
         return 1 - (v_p() + dv) * (v_p() + dv) * m_orb.p / (1. - m_orb.e) / g ;
     }
 
 
 // получение скорости при заданном угле
-    double get_v(double phi){
+    double get_v(const double phi) const{
         return sqrt(get_h() + 2. * g / m_orb.getR(phi)) ;
-
-
-
-// получение характерной скорости при заданном угле(в котором происходит пересечение орбит)
     }
-    double delta_V(orbit A, double phi){
+
+
+// получение характерной скорости в данном угле начальной орбиты 
+// при заданном угле пересечения с целевой
+    double delta_V(const orbit& A, const double phi) const{
         sputnik B(A,g);
-        double b = cos_beta(m_orb, A, phi); // угол межнду начальной скоростью и целевой
+        double b = cos_beta(m_orb, A, phi); // косинус угола межнду начальной скоростью и конечой
         double v0 = get_v(phi); // как раз таки начальная скорость
         double v = B.get_v(phi); // скорость, которую будет иметь КА на целевой орбите
 
         return sqrt(v*v + v0*v0 - 2*v*v0*b); // т. Косинусов
     }
-//****** 
+
 // получение скоростей при ОЧЕНЬ малых углах(где касательные)
-    double delta_Vr(orbit A, double phi){
+    double delta_Vr(const orbit& A, const double phi) const{
         sputnik B(A,g);
         double v0 = get_v(phi); 
         double v = B.get_v(phi); 
         return v - v0;
     }
 
+// специальная структура, чтоб получить в следующей функции
+// и вспомогательную орбиту, и скорость маневра 
 struct Orbit_and_V{
-    orbit ORB;
-    double SPEED;
+    orbit ORB; // как раз таки орбита
+    double SPEED; // и скорость
     Orbit_and_V(const orbit ORB, const double SPEED) : ORB(ORB), SPEED(SPEED) {}
 };
 
-// скорость которую надо поддать или сбавить в перицентре чтобы произошло касание
-Orbit_and_V v_min_p(orbit A, double eps){
-    Orbit_and_V W(m_orb,0.);
+// а вот эта функция...
+// происходит ситуация, когда на плоскости орбиты не пересекаются
+// (например целевая орбита находится внутри или снаружи)
+// поэтом данная функция высчитывает скороть которую надо добавить или убавить в
+// перицентре чтобы произошло касание
+// (здесь есть несколько подводных камней, которые стоит обсудить лично 
+// не только что это не прям оптимально, но и при переходе на очень отдаленную орбиту
+// (которая около в 6-7 раз дальше) перейти не получится, т к там уже выходим на параболу и тд...)
+Orbit_and_V v_min_p(const orbit& A, const double eps) const{
+    Orbit_and_V W(m_orb,0.); // эту сущность я собираюсь возврящать
     if(delta_f(m_orb,A,0.) > 0.){ // целевая орбита внутри
-        double rp = m_orb.getRp();
+        // далее мне надо проверить, что данная орбита пересекает окружность
+        // радиуса перецентра или нет, так как в противном случае перицентр и апоцентр
+        // меняются местами и при изменении скорости е и р меняются уже по-другому
+        // для этого создаю эту окружность и смотрю колличесво пересечений:
+        double rp = m_orb.getRp(); 
         double Vo = sqrt(g / rp);
         orbit new_A = m_orb;
         new_A.e = 0;
         new_A.p = rp;
-        int n = intersection(new_A, A, eps).size();
+        int n = intersection(new_A, A, eps).size(); // колличество пересечений
         if (n == 1) // +целевая орбита касается окружности радиуса перицентр    
         {
-            W.ORB = new_A;    
-            W.SPEED =  Vo - v_p();
+            W.ORB = new_A; // возвращаем орбиту - окружность
+            W.SPEED =  Vo - v_p(); // а скорость - изменение затраченное на маневр
         }
-        if (n == 0){ // целевая орбита внутри окрцжности разности перецентр 
+        if (n == 0){ // целевая орбита внутри окружности разности перецентр 
             double vl = 0.; // левая граница скорости
             double vr = Vo; // правая граница скорости 
             double V = (vl + vr) / 2.; // серединка скорости
-            int j = 0;
-            new_A.omega += M_PI;
+            
+            new_A.omega += M_PI; // вотздесь требуется повернуть главную ось.. 
             if (new_A.omega >= 2*M_PI)
                 new_A.omega -= 2 * M_PI;
             sputnik G(new_A, g);
-            orbit new_B = new_A; // новая орбита после добавления скорости            
-            while(j < 25){ // 2^25 ошибка убывает
-                ++j;
-                // стоит заметить, что скорость добавляем в перицентре                    
+            orbit new_B = new_A; // сейчас находимся на круговой орбите            
+            while(true){ 
+                // стоит заметить, что скорость добавляем в апоцентре                    
                 new_B.e = G.new_e_a(V - Vo); // новый эксцентриситет
                 new_B.p = G.new_p_a(V - Vo); // новый фокальный параметр
                 int k = intersection(new_B, A, eps).size();
@@ -126,19 +139,16 @@ Orbit_and_V v_min_p(orbit A, double eps){
                 V = (vl + vr) / 2.;
             }
             W.ORB = new_B;
-           
             W.SPEED = V - v_p();
-            return W;
+            return W; // всё)
         }
         if (n == 2){  // пересекает окружность    
             double vl = Vo; // левая граница скорости
             double vr = v_p(); // правая граница скорости
             double V = (vl + vr) / 2.; // серединка скорости 
-            int j = 0;
             
             orbit new_B = m_orb; // новая орбита после добавления скорости
-            while(j < 25){ // 2^25 ошибка убывает
-                ++j;
+            while(true){
                 // стоит заметить, что скорость добавляем в перицентре
                 new_B.e = new_e_p(V - v_p()); // новый эксцентриситет
                 new_B.p = new_p_p(V - v_p()); // новый фокальный параметр
@@ -161,7 +171,9 @@ Orbit_and_V v_min_p(orbit A, double eps){
     else{   // целевая орбита находится снаружи
         orbit new_A = m_orb;
         double vl = v_p();
-        double vr = sqrt((1.87)*g*(1+m_orb.e)/m_orb.p); // иначе ломается
+        // правую границу сделаем близ лежащую к параболе (достигается при числе не 1.87 а 2.)
+        double vr = sqrt((1.87)*g*(1+m_orb.e)/m_orb.p); // при более больших чем 1.87-1.9 ломается
+        // т к отбита становится сильно вытянутой и требуется уже другие маневры
             
         new_A.e = new_e_p(vr - v_p()); // новый эксцентриситет
         new_A.p = new_p_p(vr - v_p()); // новый фокальный параметр            
@@ -169,12 +181,11 @@ Orbit_and_V v_min_p(orbit A, double eps){
             
         if (k == 0){
             std::cout << "нельзя добавить в перцентр скорость" << std::endl;
-            return W;
+            return W; // так не идеально сделать, но зато легко отловить
         }
         double V = (vl + vr) / 2.; // серединка скорости 
-        int j = 0;
+
         while(true){ // 2^15 ошибка убывает
-            ++j;
             new_A.e = new_e_p(V - v_p()); // новый эксцентриситет
             new_A.p = new_p_p(V - v_p()); // новый фокальный параметр
             
@@ -191,39 +202,36 @@ Orbit_and_V v_min_p(orbit A, double eps){
         W.SPEED =  V - v_p();    
     }
     return W;
-}
+} 
 
 
-//
-double manevr(orbit A, double eps){ 
+// это уже основная функция маневра
+double manevr(const orbit& A, const double eps) const{ 
     sputnik B(A, g); 
-    std::array<double,3> a = peresech(m_orb, A); // направляющий вектор пересечения орбит
-    double SUM = 0.;
+    std::array<double,3> a = peresech(m_orb, A, eps); // направляющий вектор пересечения орбит
+    double SUM = 0.; // суммарня характерная скорость(которую требуется найти) 
     if(a[0] == 0 && a[1] == 0 && a[2] == 0) // т.е. лежит в плоскости
     {
-        std::cout<< "плоскость целевого эллипса совпала с настоящей" << std::endl;
-
+        std::cout<< "плоскость целевого эллипса совпала с настоящей!" << std::endl;
         std::vector<double> x = intersection(m_orb, A, eps); // экстремальные точке
-        std::vector<double> PHI; // вектор углов из которых мы видим точку пересечения
-        std::vector<double> UGOL; // угол между скоростями(начальной и целевой)
-
-        if (x.size() == 1){ // если экстремальные точки 
+        // вот здесь 3 варианта: касание, бесконечно много(совпадение); 0 и 2 пересечений 
+        if (x.size() == 1){ // касание 
             std::cout<< "Добавить скорость в угле " << x[0] << "\n";
-            std::cout<< "dV = " << delta_V(A, x[0])  << "km/s" << "\n";
+            std::cout<< "dV = " << delta_V(A, x[0])  << "m/s" << "\n";
             std::cout<< "Скорость под углом" << 0 << "(касание)" << "\n";
             SUM += abs(delta_V(A, x[0]));       
         }
-        if (x.size() == 2){  // добавление двух элементов 
+        if (x.size() == 2){ // орбиты пересекаются в 2х точках 
             int l = 0;
-            if (delta_V(A, x[0]) < delta_V(A, x[1]))
+            if (delta_V(A, x[0]) < delta_V(A, x[1])) // из двух точек смотрим более оптимальную
                 l = 0;
             else l = 1;
             std::cout<< "Добавить скорость в угле " << x[l] << "\n";
-            std::cout<< "dV = " << delta_V(A, x[l])  << "km/s" << "\n";
+            std::cout<< "dV = " << delta_V(A, x[l])  << "m/s" << "\n";
             std::cout<< "Скорость под углом = " << acos(cos_beta(m_orb,A,x[l])) << "\n";
             SUM += abs(delta_V(A, x[l]));            
         }
-        if (x.size() == 0){
+        if (x.size() == 0){ // орбиты не пересекаются
             Orbit_and_V W = v_min_p(A,eps);
             std::vector<double> y = intersection(W.ORB,A,eps);
             sputnik SP(W.ORB, g);
@@ -234,16 +242,16 @@ double manevr(orbit A, double eps){
                 std::cout<< "Новая орбита касается с целевой в угле: " << y[0]  << "\n";
                 std::cout<< "В этой точке добавим dV = " << SP.delta_Vr(A, y[0])  << "km/s" << "\n";
                 std::cout<< "Скорость под углом: " << 0 << " (касание)" << "\n";
-                SUM += abs(SP.delta_V(A, y[0]));      
+                SUM += abs(SP.delta_Vr(A, y[0]));      
             }
-            else // нужно уменьшать скорость
+            if(W.SPEED < 0) // нужно уменьшать скорость (целевая внутри)
             {
 
-                std::cout<< "Добавить скорость в перицентре dV = " << W.SPEED << "km/s" << "\n";                    
+                std::cout<< "Добавить скорость в перицентре dV = " << W.SPEED << "m/s" << "\n";                    
                 std::cout<< "Получили новую орбиту с параметрами:\n" << W.ORB << "\n";
                 
                 std::cout<< "Новая орбита касается с целевой в угле: " << y[0]  << "\n";
-                std::cout<< "В данной точке добавим dV = " << SP.delta_Vr(A, y[0])  << "km/s" << "\n";
+                std::cout<< "В данной точке добавим dV = " << SP.delta_Vr(A, y[0])  << "m/s" << "\n";
                 std::cout<< "Скорость под углом: " << 0 << " (касание)" << "\n";
                 SUM += abs(SP.delta_Vr(A, y[0]));                      
             }
@@ -253,7 +261,7 @@ double manevr(orbit A, double eps){
         return SUM;        
     }
 
-    return -1;
+    return SUM;
     }
 
 };
