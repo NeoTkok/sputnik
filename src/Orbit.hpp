@@ -9,11 +9,13 @@ struct orbit{
     double OMEGA; //долгота восходящего узла
     double omega; // аргумент перигея
     double i; // наклонение
-
+    std::array<double, 3>  S = {1., 1. ,1.}; // "положиельная ориентация" движени КА вдоль орбиты
     //инициализация структуры
     orbit(const double p, const double e, const double OMEGA, const double omega,
           const double i) : p(p), e(e), OMEGA(OMEGA), omega(omega), i(i) {};
 
+    orbit(const double p, const double e, const double OMEGA, const double omega, const double i,
+          const std::array<double,3> S) : p(p), e(e), OMEGA(OMEGA), omega(omega), i(i), S(S) {};
 
 
     // получение радиуса перицентра
@@ -50,6 +52,11 @@ struct orbit{
 };
 const double N = 1000;
 
+
+// разность двух векторов в пространстве 
+double operator*(const std::array<double,3>& A, const std::array<double,3>& B){
+    return A[0]*B[0] + A[1]*B[1] + A[2]*B[2];
+}
 // выдаёт нормированный вектор линии пересечения двух плоскостей(эллипс задаёт плоскость)
 std::array<double, 3> peresech(const orbit& A, const orbit& B, const double eps){
     std::array<double, 3> An = A.getPlane(); // коэффициенты 1 плоскости
@@ -204,6 +211,7 @@ std::vector<double> intersection(const orbit& D0, const orbit& D, const double e
     return ex_n_f;
 }
 
+
 // функция вычисляет косинус угла между орбитами,
 // которые пересекаются под углом phi(от планеты)
 // данный алгоритм дает плохую точность при очень близких углах(касание)-
@@ -221,7 +229,9 @@ double cos_beta(const orbit& D0, const orbit& D, const double phi){
     double d0 = (R0 * R0 + Rphi * Rphi - 2 * R0 * Rphi * alpha); // растояние на начальной орбите 
     double d =(R * R + Rphi * Rphi - 2 * R * Rphi * alpha); // аналогично но для целевой
     
-    return (R * R0 + Rphi * Rphi - Rphi * (R0 + R) * alpha ) / sqrt(d * d0); //возвращаю косинус)
+    double sign = (D0.S*D.S > 0.)?1.:-1.;
+
+    return (R * R0 + Rphi * Rphi - sign * Rphi * (R0 + R) * alpha ) / sqrt(d * d0); //возвращаю косинус)
 
     // для улучшения малых улов есть одна идейка
     
@@ -289,9 +299,10 @@ double cos_gama(const orbit& D0, const orbit& D, const double eps){
     
     //std::cout << R1[0] << " " << R1[1] << " " << R1[2]  << std::endl; 
     //std::cout << R2[0] << " " << R2[1] << " " << R2[2]  << std::endl; 
+    double sign = (D0.S*D.S > 0.)?1.:-1.;
 
 
-    return abs(R1[0]*R2[0] + R1[1]*R2[1] + R1[2]*R2[2])/sqrt(mod(R1) * mod(R2));
+    return sign*abs(R1[0]*R2[0] + R1[1]*R2[1] + R1[2]*R2[2])/sqrt(mod(R1) * mod(R2));
 }
 
 
