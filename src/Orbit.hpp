@@ -39,8 +39,35 @@ struct orbit{
         r[2] = cos(i);
         return r;
     }
+    // направление вектора радиального направления в пространстве   
+    std::array<double, 3> a_r(const double phi) const{
+        std::array<double, 3> a = {0,0,0};
+        a[0] = getR(phi)*(cos(OMEGA)*cos(omega+phi)-sin(OMEGA)*sin(omega+phi)*cos(i));
+        a[1] = getR(phi)*(sin(OMEGA)*cos(omega+phi)+cos(OMEGA)*sin(omega+phi)*cos(i));
+        a[2] = getR(phi)*sin(omega+phi)*sin(i);    
+        return a;
+    }
 };
 const double N = 1000;
+
+// выдаёт нормированный вектор линии пересечения двух плоскостей(эллипс задаёт плоскость)
+std::array<double, 3> peresech(const orbit& A, const orbit& B, const double eps){
+    std::array<double, 3> An = A.getPlane(); // коэффициенты 1 плоскости
+    std::array<double, 3> Bn = B.getPlane(); // коэффициенты 2 плоскости
+    std::array<double, 3> X; // сюда я буду складывать направляющие векторы пересечения
+    X[0] = An[1]*Bn[2] - An[2]*Bn[1];   // 
+    X[1] = - An[0]*Bn[2] + An[2]*Bn[0]; //здесь появеляется векторное произведение 
+    X[2] = An[0]*Bn[1] - An[1]*Bn[0];   //
+    double r = sqrt(X[0] * X[0] +  X[1] * X[1] + X[2] * X[2]);
+    if(r < eps)
+        {
+            X[0] = 0.; X[1] = 0.; X[2] = 0.;
+            return X;
+        }       
+    for(int i = 0; i < 3; ++i)
+        X[i] /= r;
+    return X;
+}
 
 
 
@@ -173,8 +200,6 @@ std::vector<double> intersection(const orbit& D0, const orbit& D, const double e
         ex_n_f.push_back(ex_n_df[1]);
         return ex_n_f;
     }
-
-
     
     return ex_n_f;
 }
@@ -202,24 +227,76 @@ double cos_beta(const orbit& D0, const orbit& D, const double phi){
     
 }
 
-// выдаёт нормированный вектор линии пересечения двух плоскостей(эллипс задаёт плоскость)
-std::array<double, 3> peresech(const orbit& A, const orbit& B, const double eps){
-    std::array<double, 3> An = A.getPlane(); // коэффициенты 1 плоскости
-    std::array<double, 3> Bn = B.getPlane(); // коэффициенты 2 плоскости
-    std::array<double, 3> X; // сюда я буду складывать направляющие векторы пересечения
-    X[0] = An[1]*Bn[2] - An[2]*Bn[1];   // 
-    X[1] = - An[0]*Bn[2] + An[2]*Bn[0]; //здесь появеляется векторное произведение 
-    X[2] = An[0]*Bn[1] - An[1]*Bn[0];   //
-    double r = sqrt(X[0] * X[0] +  X[1] * X[1] + X[2] * X[2]);
-    if(r < eps)
-        {
-            X[0] = 0.; X[1] = 0.; X[2] = 0.;
-            return X;
-        }       
-    for(int i = 0; i < 3; ++i)
-        X[i] /= r;
-    return X;
+// разность двух векторов в пространстве 
+std::array<double, 3> operator-(const std::array<double,3>& A, const std::array<double,3>& B){
+    std::array<double, 3> x = A;
+    x[0] -= B[0];
+    x[1] -= B[1];
+    x[2] -= B[2];
+    return x;
 }
+
+// квадрат вектора
+double mod(const std::array<double,3>& A){
+    return A[0]*A[0]+A[1]*A[1]+A[2]*A[2];    
+}
+
+
+// функция получающая максимально близкий вектор орбиты, соноправленный с а
+double PHI(const std::array<double,3>& a, const orbit& A, const double eps){
+    double l = 0.; // нижняя граница    
+    double val_l = mod(a - A.a_r(0.)); // расстояние снизу
+    double r = 2. * M_PI; // верхняя граница
+    double val_r = mod(a - A.a_r(2.*M_PI)); // расстояние сверху
+    //std::cout << val_r << " " << val_l << std::endl; 
+    if (val_r > mod(a-A.a_r(r - eps))){  // если мы можем уменьшать верхнюю границу
+    // то в силу монатонности найдем данный угол
+        while(val_r > mod(a-A.a_r(r -  eps)) and r >= 0){
+            r -= eps;
+            val_r = mod(a-A.a_r(r));
+//            std::cout << r << std::endl;
+
+        }
+        return r - A.omega;
+    }
+    else{ // если верхняя граница не уменьшается, то будем нижнюю увеличивать, пока можем
+        while(val_l > mod(a-A.a_r(l + eps)) and l <= 2 * M_PI){
+            l += eps;
+            val_l = mod(a-A.a_r(l));
+  //          std::cout << l << std::endl;
+
+        }
+        return l - A.omega;
+    }
+}
+
+// угол между направлениями в пространстве 
+double cos_gama(const orbit& D0, const orbit& D, const double eps){
+    
+    std::array<double, 3> a = peresech(D0,D, eps);
+    double phi_1 = PHI(a,D0,eps); // угол на вектор пересечения у начальной орбиты
+    double phi_2 = PHI(a,D,eps);  // -//- у целевой орбиты
+
+    std::array<double, 3> Rphi_1 = D0.a_r(phi_1); //расстояние до первой орбиты
+    std::array<double, 3> Rphi_2 = D.a_r(phi_2); // -//- до второй
+
+//    std::cout << Rphi_1[0] << " " << Rphi_1[1] << " " << Rphi_1[2]  << std::endl; 
+//    std::cout << Rphi_2[0] << " " << Rphi_2[1] << " " << Rphi_2[2]  << std::endl; 
+
+    double alpha = 0.0001;
+    std::array<double, 3> R1 = D0.a_r(phi_1 + alpha) - Rphi_1;
+    std::array<double, 3> R2 = D.a_r(phi_2 + alpha) - Rphi_2;
+    
+    //std::cout << R1[0] << " " << R1[1] << " " << R1[2]  << std::endl; 
+    //std::cout << R2[0] << " " << R2[1] << " " << R2[2]  << std::endl; 
+
+
+    return abs(R1[0]*R2[0] + R1[1]*R2[1] + R1[2]*R2[2])/sqrt(mod(R1) * mod(R2));
+}
+
+
+
+
 
 // наглядный вывод всех харрактеристик орбиты
 std::ostream& operator<<(std::ostream& os, const orbit& o) {
@@ -232,4 +309,17 @@ std::ostream& operator<<(std::ostream& os, const orbit& o) {
     os << "############################" << std::endl;
     return os;
 }
+
+
+// специальная структура, чтоб получить в следующей функции
+// и вспомогательную орбиту, и скорость маневра 
+struct Orbit_and_V{
+    orbit ORB; // как раз таки орбита
+    double SPEED; // и скорость
+    Orbit_and_V(const orbit ORB, const double SPEED) : ORB(ORB), SPEED(SPEED) {}
+};
+
+
+
+
 #endif 

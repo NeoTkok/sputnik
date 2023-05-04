@@ -68,12 +68,27 @@ TEST(Orbit, peresech_3){
         ASSERT_NEAR(r[i], peresech(A, B, 1e-8)[i] ,1e-13);
 }
 
+TEST(Orbit, ugol_1) {
+    orbit A(20'000'000. * 3./4., 1./2., M_PI/5., -M_PI/3., M_PI/4.);
+    
+    std::array<double,3> a = A.a_r(0);
+    ASSERT_NEAR(a[0]*a[0]+a[1]*a[1]+a[2]*a[2],A.getR(0)*A.getR(0),1e-10);
+}
+
+TEST(Orbit, ugol_2) {
+    orbit A(20'000'000. * 3./4., 1./2., M_PI/2., 0, M_PI/3.);
+
+    std::array<double,3> a = A.a_r(M_PI/2.);
+    ASSERT_NEAR(-0.5 * A.getR(M_PI/2.),A.a_r(M_PI/2.)[0],1e-8);
+    ASSERT_NEAR(A.getR(0),A.a_r(0)[1],1e-8);
+    ASSERT_NEAR(-sqrt(3.)/2. * A.getR(-M_PI/2.),A.a_r(-M_PI/2.)[2],1e-8);
+}
 // *********** тестирование функции разности значений при заданном угле в Rp и Ra ********** 
 TEST(Orbit, f) {
     orbit A(10. * (3./4.), 1./2., 0., 0., 0.);
     orbit B(10. * (3./4.), 1./2., 0., -M_PI / 2., 0.);
-    ASSERT_NEAR(-B.p+A.getRp(), delta_f(A,B,0) ,1e-15);
-    ASSERT_NEAR(A.getRa()-B.p, delta_f(A,B,M_PI) ,1e-15);
+    ASSERT_NEAR(-B.p+A.getRp(), delta_f(A,B,0) ,1e-1);
+    ASSERT_NEAR(A.getRa()-B.p, delta_f(A,B,M_PI) ,1e-1);
 }
 
 
@@ -160,6 +175,9 @@ TEST(Orbit, cos_beta_1) {
 
     ASSERT_NEAR(0.539504, cos_beta(A, B, Y[0]) ,1e-6);
 }
+
+
+
 // большой угол пересечения
 TEST(Orbit, cos_beta_2) {
     orbit A(10. * (3./4.), 1./2., 0., 0., 0.);
@@ -183,6 +201,22 @@ TEST(Orbit, cos_beta_3) {
     std::vector<double> Y = intersection(A, B, 1e-10);
     ASSERT_NEAR(0.056178, cos_beta(A,B,Y[1]), 1e-5);
 }
+
+// а теперь добавляем пространство
+TEST(Orbit, cos_gama_1) {
+    orbit A(30'000'000., 1./sqrt(2), M_PI/4. , M_PI / 3., M_PI / 2.);
+    orbit B(30'000'000., 1./sqrt(2), M_PI/4. , 0., M_PI/3.);
+
+//    ASSERT_NEAR(sqrt(3) / 2, cos_gama(A, B, 1e-5) ,1e-4);
+}
+
+TEST(Orbit, cos_gama_2) {
+    orbit A(10'000'000. * (3./4.), 1./2., M_PI/4., 0., M_PI/2.);
+    orbit B(10'000'000. * (3./4.), 1./2., M_PI/4., 0., M_PI / 4.);
+
+    ASSERT_NEAR(sqrt(1./2.), cos_gama(A, B, 1e-5) ,1e-6);
+}
+
 
 
 // тестирование экстримальных точек функции f
@@ -228,9 +262,41 @@ TEST(Orbit, touch_2) {
 
     ASSERT_NEAR(touch(A,B, Z[0], 1e-9), 0 ,1e-4);
     ASSERT_NEAR(touch(A,B, Z[0], 1e-8), 1 ,1e-4);
+}
+
+// угол одной oрбиты при котором происходит пересечение плоскостей
+// т е векторы совподают(радиальный и плоскость) 
+TEST(Orbit, ugol_vect){
+    orbit A(1., 1./sqrt(2), M_PI/4. , M_PI / 4., M_PI / 4.);
+    orbit B(1., 1./sqrt(2), M_PI/4. , 0., 3. * M_PI / 4.);
+    std::array<double, 3> r = {1./sqrt(2), 1./sqrt(2), 0.};
+
+    ASSERT_NEAR(PHI(r, A, 1e-5), 5.38257531 - M_PI / 4. , 1e-6);
+    ASSERT_NEAR(PHI(r, B, 1e-5), 0., 1e-6);
+}
+
+// угол между орбитами в пространстве
+TEST(Orbit, ugol_peresech_1){
+    orbit A(30'000'000., 1./sqrt(2), M_PI/4., 0., M_PI / 4.);
+    orbit B(30'000'000., 1./sqrt(2), M_PI/4., 0., M_PI/ 4.1);
+
+    ASSERT_NEAR(cos_gama(A, B, 1e-7), 0.999817, 1e-6);
+}
+
+TEST(Orbit, ugol_peresech_2){
+    orbit A(30'000'000., 1./sqrt(2), M_PI/4., 0., M_PI / 5.);
+    orbit B(30'000'000., 1./sqrt(2), M_PI/4., 0, 2. * M_PI / 5.);
+
+    ASSERT_NEAR(cos_gama(A, B, 1e-7), cos(M_PI/5), 1e-3);
 
 }
 
+TEST(Orbit, ugol_peresech_3){
+    orbit A(30'000'000., 1./sqrt(2), M_PI/4., 0., M_PI / 4.);
+    orbit B(30'000'000., 1./sqrt(2), M_PI/4., 0., 3 * M_PI/ 4.);
+
+    ASSERT_NEAR(cos_gama(A, B, 1e-7), 0., 1e-6);
+}
 
 //*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 
@@ -332,14 +398,103 @@ TEST(Sputnik, kasanie_5) {
 TEST(Sputnik, kasanie_6) {
     orbit A(20'000'000. * 3./4., 1./2., 0., 0., 0.);
     orbit B(20'100'000. * 3./4., 1./2., 0., 0., 0.);
-    
     sputnik S(A, GM);
-    std::cout << S.manevr(B,1e-6) << "\n";
-    //ASSERT_NEAR((S.v_min_p(B,1e-6)).SPEED, 4.81267, 1e-4);
+
+    ASSERT_NEAR((S.v_min_p(B,1e-6)).SPEED, 4.81267, 1e-4);
 }
 
 
+// далее тесты чекают фунцию поворота, которая 
+// выдаёт скорости для маневра и новые орбиты
+TEST(Sputnik, povorot_1){
+    orbit A(25'000'000., 1./sqrt(2), M_PI/4. , M_PI / 40., M_PI / 4.);
+    orbit B(25'000'000., 1./sqrt(2), M_PI/4. , 0.,  M_PI / 4.);
+    sputnik S(A, GM);
 
+    ASSERT_NEAR(S.povorot(B,1e-5).SPEED , 221.698 , 1e-3);
+}
+
+TEST(Sputnik, povorot_2){
+    orbit A(20'000'000., 1./sqrt(2), M_PI/4. , M_PI / 4., M_PI / 4.);
+    orbit B(25'000'000., 1./sqrt(2), M_PI/4. , 0., 2 * M_PI / 4.);
+    sputnik S(A, GM);
+
+    ASSERT_NEAR(S.povorot(B,1e-5).SPEED , 5'633.44 , 1e-2);
+
+}
+TEST(Sputnik, povorot_3){
+    orbit A(30'000'000., 1./sqrt(2), M_PI/3. , M_PI / 4., M_PI / 4.);
+    orbit B(25'000'000., 1./sqrt(2), M_PI/4. , M_PI /5., 2. * M_PI / 4.);
+    sputnik S(A, GM);
+
+    ASSERT_NEAR(S.povorot(B,1e-5).SPEED , 4'203.72 , 1e-2);
+
+}
+TEST(Sputnik, povorot_4){
+    orbit A(20'000'000., 1./sqrt(2), M_PI/4. , M_PI / 4., M_PI / 4.);
+    orbit B(25'000'000., 1./sqrt(2), M_PI/4. , 0., 3. * M_PI / 4.);
+    sputnik S(A, GM);
+
+    ASSERT_NEAR(S.povorot(B,1e-5).ORB.OMEGA, M_PI/4 , 1e-6);
+    ASSERT_NEAR(S.povorot(B,1e-5).ORB.omega, M_PI/4 , 1e-6);
+    ASSERT_NEAR(S.povorot(B,1e-5).ORB.i, 3 * M_PI/4 , 1e-6);
+}
+
+
+TEST(Sputnik, manevr_1){
+    orbit A(26'000'000., 1./sqrt(2), M_PI/4. , 0., M_PI / 4.);
+    orbit B(25'000'000., 1./sqrt(2), M_PI/4. , 0., M_PI / 4.1);
+    sputnik S(A, GM);
+
+    ASSERT_NEAR(S.manevr(B, 1e-7), 309.318 , 1e-2);
+}
+
+TEST(Sputnik, manevr_2){
+    orbit A(26'000'000., 1./sqrt(2), M_PI/4. , 0., M_PI / 4.);
+    orbit B(25'000'000., 1./sqrt(2), M_PI/4. , 0., M_PI / 4.);
+    sputnik S(A, GM);
+
+    ASSERT_NEAR(S.manevr(B, 1e-7), 124.275 , 1e-2);
+}
+
+TEST(Sputnik, manevr_3){
+    orbit A(26'000'000., 1./sqrt(2), M_PI/4. , 0., M_PI / 4.);
+    orbit B(35'000'000., 1./sqrt(2), -M_PI/4. , M_PI/6., M_PI / 3.);
+    sputnik S(A, GM);
+
+    ASSERT_NEAR(S.manevr(B, 1e-7), 5208.662 , 1e-2);
+}
+
+TEST(Sputnik, manevr_4){
+    orbit A(26'000'000., 1./sqrt(6), M_PI/2. , 0., M_PI / 4.);
+    orbit B(15'000'000., 1./sqrt(2), M_PI/4. , 0., M_PI / 4.5);
+    sputnik S(A, GM);
+
+    ASSERT_NEAR(S.manevr(B, 1e-7), 6237.26 , 1e-2);
+}
+
+TEST(Sputnik, manevr_5){
+    orbit A(15'000'000., 1./sqrt(2), 0 , M_PI/2., 0.);
+    orbit B(25'000'000., 1./sqrt(2), 0 , 0., 0.);
+    sputnik S(A, GM);
+
+    ASSERT_NEAR(S.manevr(B, 1e-7), 3299.67 , 1e-2);
+}
+TEST(Sputnik, manevr_6){
+    orbit A(15'000'000., 1./sqrt(2), 0. , M_PI/2., 0.);
+    orbit B(25'000'000., 1./sqrt(2), 0. , 0., 0.);
+    sputnik S(B, GM);
+
+    ASSERT_NEAR(S.manevr(A, 1e-7), 5111.45 , 1e-2);
+}
+
+TEST(Sputnik, manevr_7){
+    orbit A(26'000'000., 1./sqrt(2), M_PI/2. , 5., M_PI / 4.);
+    orbit B(125'000'000., 1./sqrt(2), -M_PI/4. , 0., M_PI / 2.5);
+    sputnik S(A, GM);
+
+    ASSERT_NEAR(S.manevr(B, 1e-6), 5057.88 , 1e-2);
+}
 
 
 

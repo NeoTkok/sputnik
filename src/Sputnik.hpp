@@ -81,13 +81,9 @@ public:
         return v - v0;
     }
 
-// специальная структура, чтоб получить в следующей функции
-// и вспомогательную орбиту, и скорость маневра 
-struct Orbit_and_V{
-    orbit ORB; // как раз таки орбита
-    double SPEED; // и скорость
-    Orbit_and_V(const orbit ORB, const double SPEED) : ORB(ORB), SPEED(SPEED) {}
-};
+
+
+
 
 // а вот эта функция...
 // происходит ситуация, когда на плоскости орбиты не пересекаются
@@ -204,35 +200,72 @@ Orbit_and_V v_min_p(const orbit& A, const double eps) const{
     return W;
 } 
 
+// функция вернёт ноую орбиту и новую скорость
+Orbit_and_V povorot(const orbit& A, const double eps) const{
+    Orbit_and_V W(m_orb,0);
+    std::array<double, 3> a = peresech(m_orb,A, eps);
+    double phi_1 = PHI(a,m_orb,eps); // угол на вектор пересечения у начальной орбиты
+    double phi_2 = PHI(a,A,eps);  // -//- у целевой орбиты
+   
+    std::array<double,3>  x = m_orb.a_r(phi_1);
+
+    W.ORB.i = A.i; // после поворота произойдет так
+    // а теперь сам поворот
+    sputnik S(A,g);
+    double Vo = get_v(phi_1);
+    double V = S.get_v(phi_2);
+    double COS = cos_gama(m_orb,A,eps);
+    W.SPEED = sqrt(V*V + Vo*Vo - 2*Vo*V*COS);
+    return W;
+}
+
+
+
+
+
 
 // это уже основная функция маневра
-double manevr(const orbit& A, const double eps) const{ 
-    sputnik B(A, g); 
+double manevr(const orbit& A, const double eps) const{
+
     std::array<double,3> a = peresech(m_orb, A, eps); // направляющий вектор пересечения орбит
-    double SUM = 0.; // суммарня характерная скорость(которую требуется найти) 
-    if(a[0] == 0 && a[1] == 0 && a[2] == 0) // т.е. лежит в плоскости
+    double SUM = 0.; // суммарня характерная скорость(которую требуется найти)     
+    Orbit_and_V H = povorot(A,eps);
+    orbit Z = m_orb; 
+
+    if(a[0] != 0 or a[1] != 0 or a[2] != 0) // 
     {
-        std::cout<< "плоскость целевого эллипса совпала с настоящей!" << std::endl;
-        std::vector<double> x = intersection(m_orb, A, eps); // экстремальные точке
+        Z = H.ORB;
+        std::cout << "Плоскости орбит не совпадают!" << std::endl;
+        std::cout << "Поддадим скорость в угле: " << PHI(a,m_orb,eps)<< " начальной орбиты" << std::endl; 
+        std::cout << "Под углом: " << acos(cos_gama(m_orb,A,eps)) <<  " к целевой орбите" << std::endl;
+        SUM += H.SPEED;
+        std::cout << "Характерная скорость данного поворота: " << H.SPEED << "m/s" << std::endl;
+        std::cout << "Таким образом мы перешли на другую орбиту, лежащу в плоскости целевой орбиты:" << std::endl << H.ORB;
+    }
+
+    sputnik B(Z, g);
+    { // маневр происходит теперь вплоскости
+        std::cout<< "Плоскость целевого эллипса совпала с настоящей!" << std::endl;
+        std::vector<double> x = intersection(Z, A, eps); // экстремальные точке
         // вот здесь 3 варианта: касание, бесконечно много(совпадение); 0 и 2 пересечений 
         if (x.size() == 1){ // касание 
             std::cout<< "Добавить скорость в угле " << x[0] << "\n";
-            std::cout<< "dV = " << delta_V(A, x[0])  << "m/s" << "\n";
-            std::cout<< "Скорость под углом" << 0 << "(касание)" << "\n";
-            SUM += abs(delta_V(A, x[0]));       
+            std::cout<< "dV = " << B.delta_Vr(A, x[0])  << "m/s" << "\n";
+            std::cout<< "Скорость под углом: " << 0 << "(касание)" << "\n";
+            SUM += abs(B.delta_V(A, x[0]));       
         }
         if (x.size() == 2){ // орбиты пересекаются в 2х точках 
             int l = 0;
-            if (delta_V(A, x[0]) < delta_V(A, x[1])) // из двух точек смотрим более оптимальную
+            if (B.delta_V(A, x[0]) < B.delta_V(A, x[1])) // из двух точек смотрим более оптимальную
                 l = 0;
             else l = 1;
-            std::cout<< "Добавить скорость в угле " << x[l] << "\n";
-            std::cout<< "dV = " << delta_V(A, x[l])  << "m/s" << "\n";
-            std::cout<< "Скорость под углом = " << acos(cos_beta(m_orb,A,x[l])) << "\n";
-            SUM += abs(delta_V(A, x[l]));            
+            std::cout<< "Добавить скорость в угле: " << x[l] << "\n";
+            std::cout<< "dV = " << B.delta_V(A, x[l])  << "m/s" << "\n";
+            std::cout<< "Скорость под углом = " << acos(cos_beta(Z,A,x[l])) << "\n";
+            SUM += abs(B.delta_V(A, x[l]));            
         }
         if (x.size() == 0){ // орбиты не пересекаются
-            Orbit_and_V W = v_min_p(A,eps);
+            Orbit_and_V W = B.v_min_p(A,eps);
             std::vector<double> y = intersection(W.ORB,A,eps);
             sputnik SP(W.ORB, g);
             SUM += abs(W.SPEED);
