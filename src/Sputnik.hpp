@@ -70,7 +70,7 @@ public:
         double v0 = get_v(phi); // как раз таки начальная скорость
         double v = B.get_v(phi); // скорость, которую будет иметь КА на целевой орбите
 
-        return sqrt(v*v + v0*v0 - 2*v*v0*b); // т. Косинусов
+        return sqrt(v * v + v0 * v0 - 2 * v * v0 * b); // т. Косинусов
     }
 
 // получение скоростей при ОЧЕНЬ малых углах(где касательные)
@@ -79,7 +79,7 @@ public:
         double v0 = get_v(phi); 
         double v = B.get_v(phi); 
         double sign = (m_orb.S * A.S > 0.)?1.:-1.;
-        return v - sign*v0;
+        return v - sign * v0;
     }
 
 
@@ -169,9 +169,9 @@ Orbit_and_V v_min_p(const orbit& A, const double eps) const{
         orbit new_A = m_orb;
         double vl = v_p();
         // правую границу сделаем близ лежащую к параболе (достигается при числе не 1.87 а 2.)
-        double vr = sqrt((1.87)*g*(1+m_orb.e)/m_orb.p); // при более больших чем 1.87-1.9 ломается
-        // т к отбита становится сильно вытянутой и требуется уже другие маневры
-            
+        double vr = sqrt((1.87) * g * (1 + m_orb.e) / m_orb.p); // при более больших чем 1.87-1.9 ломается
+        // т к отбита становится сильно вытянутой и требуюется уже другие маневры
+
         new_A.e = new_e_p(vr - v_p()); // новый эксцентриситет
         new_A.p = new_p_p(vr - v_p()); // новый фокальный параметр            
         int k = intersection(new_A, A, eps).size();
@@ -216,11 +216,9 @@ Orbit_and_V povorot(const orbit& A, const double eps) const{
     double Vo = get_v(phi_1);
     double V = S.get_v(phi_2);
     double COS = cos_gama(m_orb,A,eps);
-    W.SPEED = sqrt(V*V + Vo*Vo - 2*Vo*V*COS);
+    W.SPEED = sqrt(V * V + Vo * Vo - 2 * Vo * V * COS);
     return W;
 }
-
-
 
 
 
