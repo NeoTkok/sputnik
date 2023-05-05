@@ -78,7 +78,8 @@ public:
         sputnik B(A,g);
         double v0 = get_v(phi); 
         double v = B.get_v(phi); 
-        return v - v0;
+        double sign = (m_orb.S * A.S > 0.)?1.:-1.;
+        return v - sign*v0;
     }
 
 
