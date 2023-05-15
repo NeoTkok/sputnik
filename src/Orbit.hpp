@@ -322,15 +322,5 @@ std::ostream& operator<<(std::ostream& os, const orbit& o) {
 }
 
 
-// специальная структура, чтоб получить в следующей функции
-// и вспомогательную орбиту, и скорость маневра 
-struct Orbit_and_V{
-    orbit ORB; // как раз таки орбита
-    double SPEED; // и скорость
-    Orbit_and_V(const orbit ORB, const double SPEED) : ORB(ORB), SPEED(SPEED) {}
-};
-
-
-
 
 #endif 

@@ -347,7 +347,7 @@ TEST(Sputnik, kasanie_1) {
     orbit B(30'000'000. * 3./4., 1./2., 0., 0, 0.);
 
     sputnik S(B, GM);
-    ASSERT_NEAR(S.v_min_p(A,1e-7).SPEED, -361.07397, 1e-4);
+    ASSERT_NEAR(S.v_min_p(A,1e-7).second, -361.07397, 1e-4);
 
 }
 
@@ -359,7 +359,7 @@ TEST(Sputnik, kasanie_2_tochn) {
 
     sputnik S(B, GM);
 
-    ASSERT_NEAR((S.v_min_p(A,1e-7)).SPEED, -1158.5454, 1e-4);
+    ASSERT_NEAR((S.v_min_p(A,1e-7)).second, -1158.5454, 1e-4);
 }
 
 // близ этой оркружности но только снаружи
@@ -369,7 +369,7 @@ TEST(Sputnik, kasanie_3) {
 
     sputnik S(B, GM);
 
-    ASSERT_NEAR((S.v_min_p(A,1e-7)).SPEED, -1157.25739, 1e-4);
+    ASSERT_NEAR((S.v_min_p(A,1e-7)).second, -1157.25739, 1e-4);
 }
 
 // близ этой окружности, но только внутри неё
@@ -381,7 +381,7 @@ TEST(Sputnik, kasanie_4) {
     
     sputnik S(B, GM);
 
-    ASSERT_NEAR((S.v_min_p(A,1e-7)).SPEED, -1171.51367, 1e-4);
+    ASSERT_NEAR((S.v_min_p(A,1e-7)).second, -1171.51367, 1e-4);
 }
 
 // добавление скорости
@@ -391,7 +391,7 @@ TEST(Sputnik, kasanie_5) {
 
     sputnik S(A, GM);
     
-    ASSERT_NEAR((S.v_min_p(B,1e-6)).SPEED, 757.7616, 1e-4);
+    ASSERT_NEAR((S.v_min_p(B,1e-6)).second, 757.7616, 1e-4);
 }
 
 // добавление совсем маленькой скорости
@@ -400,7 +400,7 @@ TEST(Sputnik, kasanie_6) {
     orbit B(20'100'000. * 3./4., 1./2., 0., 0., 0.);
     sputnik S(A, GM);
 
-    ASSERT_NEAR((S.v_min_p(B,1e-6)).SPEED, 4.81267, 1e-4);
+    ASSERT_NEAR((S.v_min_p(B,1e-6)).second, 4.81267, 1e-4);
 }
 
 
@@ -411,7 +411,7 @@ TEST(Sputnik, povorot_1){
     orbit B(25'000'000., 1./sqrt(2), M_PI/4. , 0.,  M_PI / 4.);
     sputnik S(A, GM);
 
-    ASSERT_NEAR(S.povorot(B,1e-5).SPEED , 221.698 , 1e-3);
+    ASSERT_NEAR(S.povorot(B,1e-5).second , 221.698 , 1e-3);
 }
 
 TEST(Sputnik, povorot_2){
@@ -419,7 +419,7 @@ TEST(Sputnik, povorot_2){
     orbit B(25'000'000., 1./sqrt(2), M_PI/4. , 0., 2 * M_PI / 4.);
     sputnik S(A, GM);
 
-    ASSERT_NEAR(S.povorot(B,1e-5).SPEED , 5'633.44 , 1e-2);
+    ASSERT_NEAR(S.povorot(B,1e-5).second , 5'633.44 , 1e-2);
 
 }
 TEST(Sputnik, povorot_3){
@@ -427,7 +427,7 @@ TEST(Sputnik, povorot_3){
     orbit B(25'000'000., 1./sqrt(2), M_PI/4. , M_PI /5., 2. * M_PI / 4.);
     sputnik S(A, GM);
 
-    ASSERT_NEAR(S.povorot(B,1e-5).SPEED , 4'203.72 , 1e-2);
+    ASSERT_NEAR(S.povorot(B,1e-5).second , 4'203.72 , 1e-2);
 
 }
 TEST(Sputnik, povorot_4){
@@ -435,9 +435,9 @@ TEST(Sputnik, povorot_4){
     orbit B(25'000'000., 1./sqrt(2), M_PI/4. , 0., 3. * M_PI / 4.);
     sputnik S(A, GM);
 
-    ASSERT_NEAR(S.povorot(B,1e-5).ORB.OMEGA, M_PI/4 , 1e-6);
-    ASSERT_NEAR(S.povorot(B,1e-5).ORB.omega, M_PI/4 , 1e-6);
-    ASSERT_NEAR(S.povorot(B,1e-5).ORB.i, 3 * M_PI/4 , 1e-6);
+    ASSERT_NEAR(S.povorot(B,1e-5).first.OMEGA, M_PI/4 , 1e-6);
+    ASSERT_NEAR(S.povorot(B,1e-5).first.omega, M_PI/4 , 1e-6);
+    ASSERT_NEAR(S.povorot(B,1e-5).first.i, 3 * M_PI/4 , 1e-6);
 }
 
 

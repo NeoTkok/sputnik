@@ -84,9 +84,6 @@ public:
 
 
 
-
-
-// а вот эта функция...
 // происходит ситуация, когда на плоскости орбиты не пересекаются
 // (например целевая орбита находится внутри или снаружи)
 // поэтом данная функция высчитывает скороть которую надо добавить или убавить в
@@ -94,8 +91,8 @@ public:
 // (здесь есть несколько подводных камней, которые стоит обсудить лично 
 // не только что это не прям оптимально, но и при переходе на очень отдаленную орбиту
 // (которая около в 6-7 раз дальше) перейти не получится, т к там уже выходим на параболу и тд...)
-Orbit_and_V v_min_p(const orbit& A, const double eps) const{
-    Orbit_and_V W(m_orb,0.); // эту сущность я собираюсь возврящать
+std::pair<orbit,double> v_min_p(const orbit& A, const double eps) const{
+    std::pair<orbit,double> W(m_orb,0.); // эту  я собираюсь возврящать
     if(delta_f(m_orb,A,0.) > 0.){ // целевая орбита внутри
         // далее мне надо проверить, что данная орбита пересекает окружность
         // радиуса перецентра или нет, так как в противном случае перицентр и апоцентр
@@ -109,8 +106,8 @@ Orbit_and_V v_min_p(const orbit& A, const double eps) const{
         int n = intersection(new_A, A, eps).size(); // колличество пересечений
         if (n == 1) // +целевая орбита касается окружности радиуса перицентр    
         {
-            W.ORB = new_A; // возвращаем орбиту - окружность
-            W.SPEED =  Vo - v_p(); // а скорость - изменение затраченное на маневр
+            W.first = new_A; // возвращаем орбиту - окружность
+            W.second =  Vo - v_p(); // а скорость - изменение затраченное на маневр
         }
         if (n == 0){ // целевая орбита внутри окружности разности перецентр 
             double vl = 0.; // левая граница скорости
@@ -135,8 +132,8 @@ Orbit_and_V v_min_p(const orbit& A, const double eps) const{
                     vr = V;    
                 V = (vl + vr) / 2.;
             }
-            W.ORB = new_B;
-            W.SPEED = V - v_p();
+            W.first = new_B;
+            W.second = V - v_p();
             return W; // всё)
         }
         if (n == 2){  // пересекает окружность    
@@ -158,11 +155,11 @@ Orbit_and_V v_min_p(const orbit& A, const double eps) const{
                     vr = V;
                 V = (vl + vr) / 2.;
                 }
-            W.ORB = new_B;
-            W.ORB.omega += M_PI;
-            if (W.ORB.omega >= 2*M_PI)
-                W.ORB.omega -= 2 * M_PI;
-            W.SPEED =  V - v_p();
+            W.first = new_B;
+            W.first.omega += M_PI;
+            if (W.first.omega >= 2*M_PI)
+                W.first.omega -= 2 * M_PI;
+            W.second =  V - v_p();
         }
     }
     else{   // целевая орбита находится снаружи
@@ -195,28 +192,28 @@ Orbit_and_V v_min_p(const orbit& A, const double eps) const{
                 vl = V;
             V = (vl + vr) / 2.;
         }
-        W.ORB = new_A;
-        W.SPEED =  V - v_p();    
+        W.first = new_A;
+        W.second =  V - v_p();    
     }
     return W;
 } 
 
 // функция вернёт ноую орбиту и новую скорость
-Orbit_and_V povorot(const orbit& A, const double eps) const{
-    Orbit_and_V W(m_orb,0);
+std::pair<orbit,double> povorot(const orbit& A, const double eps) const{
+    std::pair<orbit,double> W(m_orb,0);
     std::array<double, 3> a = peresech(m_orb,A, eps);
     double phi_1 = PHI(a,m_orb,eps); // угол на вектор пересечения у начальной орбиты
     double phi_2 = PHI(a,A,eps);  // -//- у целевой орбиты
    
     std::array<double,3>  x = m_orb.a_r(phi_1);
 
-    W.ORB.i = A.i; // после поворота произойдет так
+    W.first.i = A.i; // после поворота произойдет так
     // а теперь сам поворот
     sputnik S(A,g);
     double Vo = get_v(phi_1);
     double V = S.get_v(phi_2);
     double COS = cos_gama(m_orb,A,eps);
-    W.SPEED = sqrt(V * V + Vo * Vo - 2 * Vo * V * COS);
+    W.second = sqrt(V * V + Vo * Vo - 2 * Vo * V * COS);
     return W;
 }
 
@@ -228,18 +225,18 @@ double manevr(const orbit& A, const double eps) const{
 
     std::array<double,3> a = peresech(m_orb, A, eps); // направляющий вектор пересечения орбит
     double SUM = 0.; // суммарня характерная скорость(которую требуется найти)     
-    Orbit_and_V H = povorot(A,eps);
+    std::pair<orbit,double> H = povorot(A,eps);
     orbit Z = m_orb; 
 
     if(a[0] != 0 or a[1] != 0 or a[2] != 0) // 
     {
-        Z = H.ORB;
+        Z = H.first;
         std::cout << "Плоскости орбит не совпадают!" << std::endl;
         std::cout << "Поддадим скорость в угле: " << PHI(a,m_orb,eps)<< " начальной орбиты" << std::endl; 
         std::cout << "Под углом: " << acos(cos_gama(m_orb,A,eps)) <<  " к целевой орбите" << std::endl;
-        SUM += H.SPEED;
-        std::cout << "Характерная скорость данного поворота: " << H.SPEED << "m/s" << std::endl;
-        std::cout << "Таким образом мы перешли на другую орбиту, лежащу в плоскости целевой орбиты:" << std::endl << H.ORB;
+        SUM += H.second;
+        std::cout << "Характерная скорость данного поворота: " << H.second << "m/s" << std::endl;
+        std::cout << "Таким образом мы перешли на другую орбиту, лежащу в плоскости целевой орбиты:" << std::endl << H.first;
     }
 
     sputnik B(Z, g);
@@ -264,23 +261,23 @@ double manevr(const orbit& A, const double eps) const{
             SUM += abs(B.delta_V(A, x[l]));            
         }
         if (x.size() == 0){ // орбиты не пересекаются
-            Orbit_and_V W = B.v_min_p(A,eps);
-            std::vector<double> y = intersection(W.ORB,A,eps);
-            sputnik SP(W.ORB, g);
-            SUM += abs(W.SPEED);
-            if(W.SPEED > 0){ // целевая орбита снаружи
-                std::cout<< "Добавить скорость в перицентре dV = " << W.SPEED << "km/s" << "\n";
-                std::cout<< "Получили новую орбиту с параметрами:\n" << W.ORB << "\n";
+            std::pair<orbit,double> W = B.v_min_p(A,eps);
+            std::vector<double> y = intersection(W.first,A,eps);
+            sputnik SP(W.first, g);
+            SUM += abs(W.second);
+            if(W.second > 0){ // целевая орбита снаружи
+                std::cout<< "Добавить скорость в перицентре dV = " << W.second << "km/s" << "\n";
+                std::cout<< "Получили новую орбиту с параметрами:\n" << W.first << "\n";
                 std::cout<< "Новая орбита касается с целевой в угле: " << y[0]  << "\n";
                 std::cout<< "В этой точке добавим dV = " << SP.delta_Vr(A, y[0])  << "km/s" << "\n";
                 std::cout<< "Скорость под углом: " << 0 << " (касание)" << "\n";
                 SUM += abs(SP.delta_Vr(A, y[0]));      
             }
-            if(W.SPEED < 0) // нужно уменьшать скорость (целевая внутри)
+            if(W.second < 0) // нужно уменьшать скорость (целевая внутри)
             {
 
-                std::cout<< "Добавить скорость в перицентре dV = " << W.SPEED << "m/s" << "\n";                    
-                std::cout<< "Получили новую орбиту с параметрами:\n" << W.ORB << "\n";
+                std::cout<< "Добавить скорость в перицентре dV = " << W.second << "m/s" << "\n";                    
+                std::cout<< "Получили новую орбиту с параметрами:\n" << W.first << "\n";
                 
                 std::cout<< "Новая орбита касается с целевой в угле: " << y[0]  << "\n";
                 std::cout<< "В данной точке добавим dV = " << SP.delta_Vr(A, y[0])  << "m/s" << "\n";
